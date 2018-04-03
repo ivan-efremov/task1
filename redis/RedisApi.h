@@ -32,6 +32,9 @@ public:
 	std::string hgetall(const std::string& a_hash);
 	std::string hkeys(const std::string& a_hash);
 	std::string hdel(const std::string& a_hash, const std::string& a_key);
+	// set
+	std::string sadd(const std::string& a_key, const std::string& a_data);
+	std::string smembers(const std::string& a_key);
 	// sorted_set
 	std::string zadd(const std::string& a_key, const std::string& a_score, const std::string& a_data);
 	std::string zcount(const std::string& a_key, const std::string& a_min, const std::string& a_max);

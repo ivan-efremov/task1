@@ -174,6 +174,38 @@ std::string RedisApi::hdel(
 	return m_cmd;
 }
 
+std::string RedisApi::sadd(
+	const std::string& a_key,
+	const std::string& a_data)
+{
+	m_cmd  = "*3\r\n"
+	         "$4\r\n"
+	         "sadd\r\n"
+	         "$";
+	m_cmd += std::to_string(a_key.length());
+	m_cmd += "\r\n";
+	m_cmd += a_key;
+	m_cmd += "\r\n"
+	         "$";
+	m_cmd += std::to_string(a_data.length());
+	m_cmd += "\r\n";
+	m_cmd += a_data;
+	return m_cmd;
+}
+
+std::string RedisApi::smembers(
+	const std::string& a_key)
+{
+	m_cmd  = "*2\r\n"
+	         "$8\r\n"
+	         "smembers\r\n"
+	         "$";
+	m_cmd += std::to_string(a_key.length());
+	m_cmd += "\r\n";
+	m_cmd += a_key;
+	return m_cmd;
+}
+
 std::string RedisApi::zadd(
 	const std::string& a_key,
 	const std::string& a_score,
