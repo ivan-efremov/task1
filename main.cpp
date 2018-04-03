@@ -4,12 +4,10 @@
 
 #include <iostream>
 #include <string>
-#include <vector>
 #include <map>
 #include <set>
 #include <memory>
 #include "redis/RedisIO.h"
-
 
 const std::string REDIS_HOST = "127.0.0.1";
 const std::string REDIS_PORT = "6379";

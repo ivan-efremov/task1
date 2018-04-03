@@ -9,7 +9,8 @@
 #include <memory>
 #include <iostream>
 #include <boost/asio.hpp>
-#include "RedisCommand.h"
+#include "RedisApi.h"
+//#include "RedisCommand.h"
 
 
 namespace ba  = boost::asio;
