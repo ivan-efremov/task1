@@ -49,65 +49,57 @@ static PDictionary loadDictionary(PSegments a_segs)
     PDictionary dict = std::make_shared<Dictionary>();
     PRedisIO    redisIO = std::make_shared<RedisIO>(REDIS_HOST, REDIS_PORT);
     PRedisApi   redisApi = std::make_shared<RedisApi>();
-    // ожидаем соединение к редис
-    while(redisIO->error()) {
+    // формируем интересующий нас словарь
+    for(auto& seg : *a_segs) {
+    #ifdef DEBUG
+        std::cout << "REDIS_KEY: " << seg << " => ";
+    #endif
         try {
-            redisIO->close();
-            redisIO->connect();
+            PSetId setId = std::make_shared<SetId>();
+            RedisIO::PListValue listItems = redisIO->api(
+                redisApi->smembers(std::string("c:") + seg)
+            );
+            for(auto& id : *listItems) {
+            #ifdef DEBUG
+                std::cout << id << ' ';
+            #endif
+                setId->insert(std::stol(id));
+            }
+            dict->emplace(seg, setId);
+        #ifdef DEBUG
+            std::cout << std::endl;
+        #endif
         } catch(const std::exception& err) {
             std::cerr << "loadDictionary: " << err.what() << std::endl;
-            sleep(1);
-        }
-    }
-    // загружаем словарь
-    RedisIO::PListValue listKeys;
-    try {
-        listKeys = redisIO->api(redisApi->keys("c:*"));
-    } catch(const std::exception& err) {
-        std::cerr << "loadDictionary: " << err.what() << std::endl;
-    }
-
-    for(auto& key : *listKeys) {
-#ifdef DEBUG
-        std::cout << "REDIS_KEY: " << key << " => ";
-#endif
-        auto itSeg = a_segs->find(key.substr(2));
-        if(itSeg != a_segs->end()) {
-        #ifdef DEBUG
-//            std::cout << " *** FIND ***" << std::endl;
-        #endif
-            try {
-                PSetId setId = std::make_shared<SetId>();
-                RedisIO::PListValue listItems = redisIO->api(redisApi->smembers(key));
-                for(auto& id : *listItems) {
-                #ifdef DEBUG
-                    std::cout << id << ' ';
-                #endif
-                    setId->insert(std::stol(id));
-                }
-                dict->emplace(*itSeg, setId);
-            #ifdef DEBUG
-                std::cout << std::endl;
-            #endif
-            } catch(const std::exception& err) {
-                std::cerr << "loadDictionary: " << err.what() << std::endl;
-                exit(-1);
-            }
-        } else {
-#ifdef DEBUG
-        std::cout << std::endl;
-#endif
+            exit(-2);
         }
     }
     return dict;
 }
 
-static PDesignations loadDesignations(PDictionary a_dictionary)
+static PDesignations loadDesignations(PDictionary a_dict)
 {
     PDesignations sign = std::make_shared<Designations>();
     PRedisIO      redisIO = std::make_shared<RedisIO>(REDIS_HOST, REDIS_PORT);
     PRedisApi     redisApi = std::make_shared<RedisApi>();
-    
+    for(auto& itDict : *a_dict) {
+        PSetId setId = itDict.second;
+        for(auto& id : *setId) {
+            try {
+                RedisIO::PListValue val = redisIO->api(
+                    redisApi->get(std::string("t:") + std::to_string(id))
+                );
+                std::string sval(val->empty() ? "" : val->front());
+            #ifdef DEBUG
+                std::cout << "SIGN: " << id << " => " << sval << std::endl;
+            #endif
+                sign->emplace(id, sval);
+            } catch(const std::exception& err) {
+                std::cerr << "loadDesignations: " << err.what() << std::endl;
+                exit(-1);
+            }
+        }
+    }
     return sign;
 }
 

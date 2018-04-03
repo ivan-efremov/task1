@@ -206,6 +206,18 @@ std::string RedisApi::smembers(
 	return m_cmd;
 }
 
+std::string RedisApi::get(const std::string& a_key)
+{
+	m_cmd  = "*2\r\n"
+	         "$3\r\n"
+	         "get\r\n"
+	         "$";
+	m_cmd += std::to_string(a_key.length());
+	m_cmd += "\r\n";
+	m_cmd += a_key;
+	return m_cmd;
+}
+
 std::string RedisApi::zadd(
 	const std::string& a_key,
 	const std::string& a_score,

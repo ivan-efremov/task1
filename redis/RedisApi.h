@@ -35,6 +35,8 @@ public:
 	// set
 	std::string sadd(const std::string& a_key, const std::string& a_data);
 	std::string smembers(const std::string& a_key);
+	// string
+	std::string get(const std::string& a_key);
 	// sorted_set
 	std::string zadd(const std::string& a_key, const std::string& a_score, const std::string& a_data);
 	std::string zcount(const std::string& a_key, const std::string& a_min, const std::string& a_max);
