@@ -10,6 +10,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "-pipe -DDEBUG -Wall -ggdb -O0 ${CMAKE_CXX_FLAGS_ALL}"
 set(CMAKE_CXX_FLAGS_RELEASE "-pipe -DNDEBUG -Wall -g0 -O2 -s ${CMAKE_CXX_FLAGS_ALL}")
 
 
+file(GLOB SOURCE_REDIS "redis/*.cpp")
+
 set(SOURCE_FILES main.cpp)
 
-add_executable(task1 ${SOURCE_FILES})
+add_executable(task1 ${SOURCE_FILES} ${SOURCE_REDIS})
+
+target_link_libraries(task1 boost_system pthread)
