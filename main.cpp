@@ -11,7 +11,6 @@
 #include "redis/RedisIO.h"
 
 
-const int         N = 4;
 const std::string REDIS_HOST = "127.0.0.1";
 const std::string REDIS_PORT = "6379";
 
@@ -29,17 +28,21 @@ typedef std::shared_ptr<Dictionary>     PDictionary;
 typedef std::map<size_t, std::string>   Designations;
 typedef std::shared_ptr<Designations>   PDesignations;
 
+// результат сравнения с образцом
+typedef std::map<size_t, PSegments>     CompareResult;
+typedef std::shared_ptr<CompareResult>  PCompareResult;
 
-static PSegments makeSegments(const std::string a_line)
+
+static PSegments makeSegments(const std::string a_line, int a_n)
 {
     PSegments segs = std::make_shared<Segments>();
-    const size_t l = a_line.length() - N + 1;
+    const size_t l = a_line.length() - a_n + 1;
     for(size_t i = 0; i < l; ++i) {
-        std::string section = a_line.substr(i, N);
+        std::string segment = a_line.substr(i, a_n);
     #ifdef DEBUG
-        std::cout << "SECTION: " << section << std::endl;
+        std::cout << "SEGMENT: " << segment << std::endl;
     #endif
-        segs->insert(section);
+        segs->insert(segment);
     }
     return segs;
 }
@@ -65,7 +68,9 @@ static PDictionary loadDictionary(PSegments a_segs)
             #endif
                 setId->insert(std::stol(id));
             }
-            dict->emplace(seg, setId);
+            if(!dict->emplace(seg, setId).second) {
+                throw std::runtime_error("Segment already exist: " + seg);
+            }
         #ifdef DEBUG
             std::cout << std::endl;
         #endif
@@ -89,11 +94,14 @@ static PDesignations loadDesignations(PDictionary a_dict)
                 RedisIO::PListValue val = redisIO->api(
                     redisApi->get(std::string("t:") + std::to_string(id))
                 );
-                std::string sval(val->empty() ? "" : val->front());
-            #ifdef DEBUG
-                std::cout << "SIGN: " << id << " => " << sval << std::endl;
-            #endif
-                sign->emplace(id, sval);
+                if(!val->empty()) {
+                    std::string sval(val->front());
+                    sval = sval.substr(sval.find('|') + 1);
+                #ifdef DEBUG
+                    std::cout << "SIGN: " << id << " => " << sval << std::endl;
+                #endif
+                    sign->emplace(id, sval);
+                }
             } catch(const std::exception& err) {
                 std::cerr << "loadDesignations: " << err.what() << std::endl;
                 exit(-1);
@@ -101,6 +109,45 @@ static PDesignations loadDesignations(PDictionary a_dict)
         }
     }
     return sign;
+}
+
+static PCompareResult compareWithSample(const std::string& a_sample, PDesignations a_sign)
+{
+    PCompareResult compareResult = std::make_shared<CompareResult>();
+    PSegments segsSample = makeSegments(a_sample, 3);
+    for(auto& itSign : *a_sign) {
+        size_t id = itSign.first;
+        std::string word = itSign.second;
+        PSegments segsWord = makeSegments(word, 3);
+        for(auto& segS :  *segsSample) {
+            PSegments findSeg = std::make_shared<Segments>();
+            for(auto& segW : *segsWord) {
+                if(segS == segW) {
+                #ifdef DEBUG
+                    std::cout << "COMPARE: " << segS << std::endl;
+                #endif
+                    findSeg->insert(segS);
+                }
+            }
+            if(!findSeg->empty()) {
+                auto res = compareResult->emplace(id, findSeg);
+                if(!res.second) {
+                    res.first->second->insert(findSeg->begin(), findSeg->end());
+                }
+            }
+        }
+    }
+    return compareResult;
+}
+
+static void printResult(PCompareResult a_compareResult)
+{
+    std::cout << "Result:" << std::endl;
+    for(auto& itResult : *a_compareResult) {
+        size_t id = itResult.first;
+        PSegments cmpSeg = itResult.second;
+        std::cout << "\t" << id << " : " << cmpSeg->size() << std::endl;
+    }
 }
 
 
@@ -113,12 +160,17 @@ int main(int argc, const char *argv[])
     std::cin >> line;
 
     // 2) Разбить это слово на все возможные четырёхсимвольные отрезки
-    PSegments segs = makeSegments(line);
+    PSegments segs = makeSegments(line, 4);
 
     // 3) Загрузить из базы все обозначения, где эти отрезки встречаются.
     PDictionary dict = loadDictionary(segs);
     PDesignations sign = loadDesignations(dict);
 
+    // 4) Сравнить каждое обозначение с образцом
+    PCompareResult compareResult = compareWithSample(line, sign);
+
+    // 5) Построчно вывести в консоль ID загруженных знаков и количество совпадений
+    printResult(compareResult);
 
     return 0;
 }
